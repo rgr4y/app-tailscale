@@ -7,7 +7,8 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Setup base
 ARG BUILD_ARCH=amd64
-ARG TAILSCALE_VERSION="v1.102.3"
+# Empty = resolve the latest stable at build time. Pin (e.g. "v1.102.3") for reproducible builds.
+ARG TAILSCALE_VERSION=""
 RUN \
     apk add --no-cache \
         bind-tools=9.20.26-r0 \
@@ -29,6 +30,11 @@ RUN \
     && if [ "${BUILD_ARCH}" = "aarch64" ]; then ARCH="arm64"; fi \
     && if [ "${BUILD_ARCH}" = "amd64" ]; then ARCH="amd64"; fi \
     \
+    && if [ -z "${TAILSCALE_VERSION}" ]; then \
+        TAILSCALE_VERSION="$(curl -sSL "https://pkgs.tailscale.com/stable/?mode=json" \
+            | grep -o '"Version"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | cut -d'"' -f4)"; \
+       fi \
+    && echo "Installing Tailscale ${TAILSCALE_VERSION}" \
     && curl -L -s \
         "https://pkgs.tailscale.com/stable/tailscale_${TAILSCALE_VERSION#v}_${ARCH}.tgz" \
         | tar zxvf - -C /opt/ --strip-components 1 \
